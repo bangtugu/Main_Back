@@ -13,28 +13,27 @@ def get_connection():
 
 def fetch_unprocessed_files():
     """
-    TXTTITLE이 NULL인 파일 조회
-    반환: [(FILE_ID, TITLE, CTITLE)]
+    IS_TRANSFORM이 0인 파일 조회
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID, TITLE, CTITLE FROM FILES WHERE TXTTITLE IS NULL ORDER BY FILE_ID"
+        "SELECT FILE_ID FROM FILES WHERE IS_TRANSFORM = 0 ORDER BY FILE_ID"
     )
     files = cursor.fetchall()
     cursor.close()
     conn.close()
     return files
 
-def update_txttitle(file_id, txt_filename):
+def update_is_transform(file_id):
     """
-    OCR 완료 후 TXTTITLE 컬럼 업데이트
+    OCR 완료 후 IS_TRANSFORM 컬럼 업데이트
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE FILES SET TXTTITLE = :txttitle WHERE FILE_ID = :fid",
-        {"txttitle": txt_filename, "fid": file_id}
+        "UPDATE FILES SET IS_TRANSFORM = 1 WHERE FILE_ID = :fid",
+        {"fid": file_id}
     )
     conn.commit()
     cursor.close()
