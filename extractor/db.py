@@ -11,29 +11,48 @@ def get_connection():
         dsn="localhost:1521/xe"
     )
 
-def fetch_unprocessed_files():
+
+def get_unprocessed_files():
     """
-    IS_TRANSFORM이 0인 파일 조회
+    IS_TRANSFORM이 0, 1인 파일 조회
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID FROM FILES WHERE IS_TRANSFORM = 0 ORDER BY FILE_ID"
+        "SELECT FILE_ID, FILE_TYPE, IS_TRANSFORM FROM FILES WHERE IS_TRANSFORM < 2 ORDER BY FILE_ID"
     )
-    files = cursor.fetchall()
+
+    files = [{'FILE_ID': f[0], 'FILE_TYPE': f[1], 'IS_TRANSFORM': f[2]} for f in cursor.fetchall()]
     cursor.close()
     conn.close()
     return files
 
-def update_is_transform(file_id):
+
+def start_extract_bulk(file_ids: list[int]):
+    if not file_ids:
+        return
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.executemany(
+        "UPDATE FILES SET IS_TRANSFORM = 1 WHERE FILE_ID = :fid",
+        [{"fid": fid} for fid in file_ids]
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+
+def done_extract(file_id):
     """
     OCR 완료 후 IS_TRANSFORM 컬럼 업데이트
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE FILES SET IS_TRANSFORM = 1 WHERE FILE_ID = :fid",
-        {"fid": file_id}
+        "UPDATE FILES SET IS_TRANSFORM = 2 WHERE FILE_ID = :file_id",
+        {"file_id": file_id}
     )
     conn.commit()
     cursor.close()

@@ -3,64 +3,59 @@ from .extract_pdf import extract_pdf_text
 from .extract_hwp import extract_hwp_text
 from .extract_msoffice import extract_office_text
 from .image_ocr import run_ocr
+import requests
+import db
+import extract_hwp, extract_msoffice, extract_pdf, image_ocr
 # from db_module import save_extraction_result  # 실제 DB 연동 시 주석 해제
 
 SUPPORTED_EXTENSIONS = {".pdf", ".hwp", ".docx", ".pptx", ".xlsx",
-                        ".jpg", ".jpeg", ".png"}
+                        ".jpg", ".jpeg", ".png", ".txt"}
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_files")
+CLASSFICATOR_DIR = 'http://localhost:8002/new_file/'
 
 
-def is_supported(file_path):
-    """지원되는 파일인지 확인"""
-    ext = os.path.splitext(file_path)[1].lower()
-    return ext in SUPPORTED_EXTENSIONS
+def handle_files(files):
 
-
-def process_file(file_path):
-    """
-    파일 타입별 extractor 호출
-    - PDF/HWP/Office: 텍스트 + 내부 이미지 OCR 포함
-    - Standalone 이미지: OCR 독립 처리
-    """
-    ext = os.path.splitext(file_path)[1].lower()
-    text = ""
-
-    try:
-        if ext == ".pdf":
-            text = extract_pdf_text(file_path)
-        elif ext == ".hwp":
-            text = extract_hwp_text(file_path)
-        elif ext in [".docx", ".pptx", ".xlsx"]:
-            text = extract_office_text(file_path)
-        elif ext in [".jpg", ".jpeg", ".png"]:
-            text = run_ocr(file_path)
-        else:
-            print(f"[SKIP] Unsupported file type: {file_path}")
-            return
-
-        # TODO: 추출 결과 DB에 저장
-        # save_extraction_result(file_path, text)
-
-        print(f"[EXTRACTED] {file_path} ({len(text)} chars)")
-
-    except Exception as e:
-        print(f"[FAIL] {file_path}: {str(e)}")
-
-    return text
-
-
-def going_extract(file_ids):
-    """
-    파일 리스트 순회하며 각 파일 추출 (LIFO)
-    - DB에서 가져온 리스트 그대로 전달하면 utils에서 pop()으로 처리
-    """
-    while file_ids:
-        file_path = file_ids.pop()  # 리스트 맨 끝을 꺼냄 → LIFO
-        if not is_supported(file_path):
-            print(f"[SKIP] Unsupported file: {file_path}")
+    target_lst = []
+    for file in files:
+        file_id = file['FILE_ID']
+        file_type = file['FILE_TYPE']
+        # 리스트 맨 끝을 꺼냄 → LIFO
+        if file_type not in SUPPORTED_EXTENSIONS:
+            print(f"[SKIP] Unsupported file: {file_id}")
             continue
+        
+        target_lst.append([file_id, file_type])
+    
+    # 추출 시작 db 기록
+    db.start_extract_bulk([f[0] for f in target_lst])
+    extracted = []
 
-        process_file(file_path)
+    # 파일별 추출
+    for file_id, file_type in target_lst:
 
-    for file_id in file_ids:
-        if not is_supported(file_id):
-            pass
+        file_path = os.path.join(UPLOAD_DIR, f"{file_id}{file_type}")
+        txt_path = os.path.join(EXTRACT_DIR, f"{file_id}_extracted.txt")
+
+        if file_type == ".pdf":
+            text = extract_pdf_text(file_path)
+        elif file_type == ".hwp":
+            text = extract_hwp_text(file_path)
+        elif file_type in [".docx", ".pptx", ".xlsx"]:
+            text = extract_office_text(file_path)
+        elif file_type in [".jpg", ".jpeg", ".png"]:
+            text = run_ocr(file_path)
+        elif file_type == ".txt":
+            with open(file_path, "r", encoding="utf-8") as f:
+                text = f.read()
+        
+        with open(txt_path, "w", encoding="utf-8") as out:
+            out.write(text)
+
+        # 추출 완료 db 기록
+        db.done_extract(file_id)
+        extracted.append(file_id)
+    
+    requests.post(CLASSFICATOR_DIR, json=extracted, timeout=None)

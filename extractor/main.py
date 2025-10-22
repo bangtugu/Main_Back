@@ -15,21 +15,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+check_set = set()
+
 
 @app.post("/new_file/")
-async def new_file(file_ids: list[int]):
-    utils.going_extract(file_ids)
-    return {"status": "dispatched", "file_ids": file_ids}
+async def new_file(files: list):
+    utils.handle_files(files)
+    return {"status": "dispatched", "files": files}
 
 
 def dispatch_unextracted_files():
-    file_ids = db.get_unprocessed_files()
-    if not file_ids:
+    global check_set
+    files = db.get_unprocessed_files()
+    if not files:
         print("[INFO] No unextracted files found.")
+        check_set = set()
         return
 
-    print(f"[INFO] Found {len(file_ids)} unextracted files. Dispatching...")
-    utils.going_extract(file_ids)
+    temp_set = set()
+    temp_lst = []
+    for file in files:
+        if file["IS_TRANSFORM"] and file["FILE_ID"] not in check_set:
+            temp_set.add(file["FILE_ID"])
+        else:
+            temp_lst.append({'FILE_ID': file["FILE_ID"], 'FILE_TYPE': file["FILE_TYPE"]})
+    
+    check_set = temp_set
+    print(f"[INFO] Found {len(temp_lst)} unextracted files. Dispatching...")
+    utils.handle_files(temp_lst)
 
 
 # ==============================

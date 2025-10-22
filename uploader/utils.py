@@ -3,13 +3,15 @@ import os
 import shutil
 import zipfile
 import db
+import requests
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_files")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+EXTRACTOR_URL = "http://localhost:8001/new_file/"
 SUPPORTED_EXTENSIONS = {".pdf", ".hwp", ".docx", ".pptx", ".xlsx",
-                        ".jpg", ".jpeg", ".png", ".zip"}
+                        ".jpg", ".jpeg", ".png", ".zip", ".txt"}
 
 def simple_upload_files(user_id, files, current_file_index):
     """
@@ -19,6 +21,7 @@ def simple_upload_files(user_id, files, current_file_index):
     - parent_file_id 연결 없음
     """
     results = {}
+    recorded = {}
 
     for file in files:
         ext = os.path.splitext(file.filename)[1].lower()
@@ -32,9 +35,10 @@ def simple_upload_files(user_id, files, current_file_index):
             # 2. DB 기록 (상위 파일)
             record_type = ext.replace('.', '') if ext in SUPPORTED_EXTENSIONS else "unsupported"
             db.insert_file_record(current_file_index, file.filename, record_type, user_id, save_path)
+            recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
             results[file.filename] = "success"
             current_file_index += 1
-
+            
             # 3. ZIP 내부 파일 처리
             if ext == ".zip":
                 with zipfile.ZipFile(save_path, 'r') as zip_ref:
@@ -54,9 +58,11 @@ def simple_upload_files(user_id, files, current_file_index):
                             record_type = inner_ext.replace('.', '')
 
                         db.insert_file_record(current_file_index, inner_file, record_type, user_id, inner_save_path)
+                        recorded[current_file_index] = record_type
                         current_file_index += 1
 
         except Exception as e:
             results[file.filename] = f"fail: {str(e)}"
 
+    requests.post(EXTRACTOR_URL, json=recorded, timeout=None)
     return current_file_index, results
