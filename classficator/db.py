@@ -19,9 +19,9 @@ def fetch_unprocessed_files():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID IS_CLASSFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSFICATION < 2 ORDER BY FILE_ID"
+        "SELECT FILE_ID FILE_TYPE IS_CLASSFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSFICATION < 2 ORDER BY FILE_ID"
     )
-    files = [{"FILE_ID": r[0], "IS_CLASSIFICATION": r[1]} for r in cursor.fetchall()]
+    files = [{"FILE_ID": r[0], "FILE_TYPE": r[1], "IS_CLASSIFICATION": r[2]} for r in cursor.fetchall()]
     cursor.close()
     conn.close()
     return files

@@ -18,9 +18,9 @@ check_set = set()
 
 
 @app.post("/new_file/")
-async def new_file(file_ids: list[int]):
-    utils.handle_files(file_ids)
-    return {"status": "dispatched", "file_ids": file_ids}
+async def new_file(files):
+    utils.handle_files(files)
+    return {"status": "dispatched", "files": files}
 
 
 def dispatch_unclassficated_files():
@@ -37,7 +37,7 @@ def dispatch_unclassficated_files():
         if file["IS_CLASSFICATION"] and file["FILE_ID"] not in check_set:
             temp_set.add(file["FILE_ID"])
         else:
-            temp_lst.append(file["FILE_ID"])
+            temp_lst.append([file["FILE_ID"], file["FILE_TYPE"]])
     
     check_set = temp_set
     print(f"[INFO] Found {len(temp_lst)} unextracted files. Dispatching...")

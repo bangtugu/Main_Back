@@ -18,7 +18,7 @@ try:
 
     try:
         # FILES 테이블 삭제 시도
-        cursor.execute("DROP TABLE FILES")
+        cursor.execute("DROP TABLE USERS")
         conn.commit()
         print("✅ FILES 테이블이 삭제되었습니다.")
     except oracledb.DatabaseError:

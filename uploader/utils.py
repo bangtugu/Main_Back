@@ -58,7 +58,7 @@ def simple_upload_files(user_id, files, current_file_index):
                             record_type = inner_ext.replace('.', '')
 
                         db.insert_file_record(current_file_index, inner_file, record_type, user_id, inner_save_path)
-                        recorded[current_file_index] = record_type
+                        recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
                         current_file_index += 1
 
         except Exception as e:

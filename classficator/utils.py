@@ -4,7 +4,7 @@ import db
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
 
 
-async def classify_file(text: str):
+async def classify_file(text, file_type):
     result = ''
     try:
         # 2️⃣ Gemma3 모델용 prompt 구성
@@ -12,7 +12,8 @@ async def classify_file(text: str):
             "너는 문서의 형식을 분류하는 AI야."
             "사용자가 제공하는 텍스트를 보고 아래 중 가장 알맞은 하나의 문서 유형을 답해."
             "가능한 유형: 회의록, 일부개정법률안, 입법, 법률안, 기타."
-            "출력은 TEXT로 분류 딱 한 단어만 반환해:"
+            f"제공되는 텍스트의 원래 확장자는 {file_type}였어."
+            "출력은 TEXT로 분류 딱 한 단어만 반환해"
             "\"카테고리명\""
         )
         end_prompt = (
@@ -88,25 +89,17 @@ def classify_text(text, instruction=None):
         return None
 
 
-def mark_text_classified(db_id, category):
-    """
-    DB에 분류 결과 저장
-    실제 구현 시 DB 업데이트 로직으로 교체
-    """
-    print(f"[DB] Record {db_id} marked as {category}")
-
-
 def handle_files(files):
     
     db.start_classfication_bulk(files)
 
-    for file in files:
+    for file_id, file_type in files:
         try:
-            text = open(file["FILE_PATH"]+"_extract.txt")
-            result, category = classify_file(text)
+            text = open(file_id+"_extract.txt")
+            result, category = classify_file(text, file_type)
             if result == "done":
-                db.done_classfication(file['FILE_ID'], category)
+                db.done_classfication(file_id, category)
             else:
-                db.error_classfication(file['FILE_ID'])
+                db.error_classfication(file_id)
         except:
-            db.error_classfication(file['FILE_ID'])
+            db.error_classfication(file_id)
