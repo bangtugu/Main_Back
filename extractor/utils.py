@@ -31,7 +31,6 @@ def handle_files(files):
     
     # 추출 시작 db 기록
     db.start_extract_bulk([f[0] for f in target_lst])
-    extracted = []
 
     # 파일별 추출
     for file_id, file_type in target_lst:
@@ -40,13 +39,13 @@ def handle_files(files):
         txt_path = os.path.join(EXTRACT_DIR, f"{file_id}_extracted.txt")
 
         if file_type == ".pdf":
-            text = extract_pdf_text(file_path)
+            text = extract_pdf.extract(file_path)
         elif file_type == ".hwp":
-            text = extract_hwp_text(file_path)
+            text = extract_hwp.extract(file_path)
         elif file_type in [".docx", ".pptx", ".xlsx"]:
-            text = extract_office_text(file_path)
+            text = extract_msoffice.extract(file_path, file_type)
         elif file_type in [".jpg", ".jpeg", ".png"]:
-            text = run_ocr(file_path)
+            text = image_ocr.run_ocr(file_path)
         elif file_type == ".txt":
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
@@ -56,6 +55,5 @@ def handle_files(files):
 
         # 추출 완료 db 기록
         db.done_extract(file_id)
-        extracted.append(file_id)
     
-    requests.post(CLASSFICATOR_DIR, json=extracted, timeout=None)
+    requests.post(CLASSFICATOR_DIR, json=target_lst, timeout=None)

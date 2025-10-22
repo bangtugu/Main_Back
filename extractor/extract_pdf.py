@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
-from .image_ocr import run_ocr, clean_ocr_text
+from image_ocr import run_ocr, clean_ocr_text
+
 
 def get_image_at_block(page, bbox=[]):
     dpi_set = 500
@@ -10,7 +11,8 @@ def get_image_at_block(page, bbox=[]):
         pix = page.get_pixmap(clip=rect, dpi=dpi_set)
     return pix.tobytes(output="png")
 
-def extract_pdf_text(pdf_bytes):
+
+def extract(pdf_bytes):
     """
     PDF 페이지 블록 순서 유지
     - 텍스트 블록: 줄 단위로 합침

@@ -1,29 +1,46 @@
-from .image_ocr import run_ocr, clean_ocr_text
+import os
+import io
+from PIL import Image
+import olefile
+import pyhwp
+from .image_ocr import run_ocr
 
-def extract_hwp_text(hwp_file_path):
+
+def extract(file_path: str) -> str:
     """
-    HWP 파일 텍스트 + 이미지 순서 유지
-    - pyhwp 같은 라이브러리 필요
-    - 실제 내부 이미지 블록 위치를 확인해서 OCR 수행
+    HWP 파일에서 텍스트와 이미지(OCR) 추출
     """
-    full_text = []
+    text_blocks = []
 
-    # TODO: pyhwp로 문단/이미지 블록 추출
-    # 예시 pseudo-code
-    blocks = get_hwp_blocks(hwp_file_path)  # 텍스트/이미지 섞인 블록 리스트
+    # 1️⃣ 텍스트 추출 (pyhwp)
+    try:
+        with pyhwp.HWPReader(file_path) as hwp:
+            for para in hwp.paragraphs():
+                if para.text.strip():
+                    text_blocks.append(para.text)
+    except Exception as e:
+        print(f"[WARN] Failed to extract text from {file_path}: {e}")
 
-    line_buffer = []
-    for b in blocks:
-        if b['type'] == 'text':
-            # 행 단위 합치기
-            line_buffer.append(b['content'])
-        elif b['type'] == 'image':
-            if line_buffer:
-                full_text.append(' '.join(line_buffer))
-                line_buffer = []
-            full_text.append(run_ocr(b['bytes']))
+    # 2️⃣ 이미지 추출 (OLE 구조 접근)
+    try:
+        if olefile.isOleFile(file_path):
+            ole = olefile.OleFileIO(file_path)
+            for stream_name in ole.listdir():
+                # HWP 내부 이미지 스트림은 보통 BinData/ 안에 있음
+                if "BinData" in stream_name[-1]:
+                    try:
+                        data = ole.openstream(stream_name).read()
+                        img = Image.open(io.BytesIO(data))
+                        ocr_text = run_ocr(img)
+                        text_blocks.append(f"\n[IMAGE_OCR:{stream_name}]\n{ocr_text}")
+                    except Exception as e:
+                        print(f"[WARN] Failed to OCR image in {file_path}: {e}")
+                        continue
+            ole.close()
+    except Exception as e:
+        print(f"[WARN] Failed to extract images from {file_path}: {e}")
 
-    if line_buffer:
-        full_text.append(' '.join(line_buffer))
-
-    return "\n\n".join([clean_ocr_text(t) for t in full_text])
+    # 3️⃣ 결과 반환
+    if not text_blocks:
+        text_blocks.append("[EMPTY] No extractable content found.")
+    return "\n".join(text_blocks)
