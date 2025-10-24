@@ -12,24 +12,24 @@ def get_connection():
     )
 
 
-def fetch_unprocessed_files():
+def get_unclassified_files():
     """
-    IS_TRASCORM이 2이면서 IS_CLASSFICATION이 0, 1인 파일 조회
+    IS_TRASCORM이 2이면서 IS_CLASSIFICATION이 0, 1인 파일 조회
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID FILE_TYPE IS_CLASSFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSFICATION < 2 ORDER BY FILE_ID"
+        "SELECT FILE_ID, FILE_TYPE, IS_CLASSIFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSIFICATION < 2 ORDER BY FILE_ID"
     )
-    files = [{"FILE_ID": r[0], "FILE_TYPE": r[1], "IS_CLASSIFICATION": r[2]} for r in cursor.fetchall()]
+    files = cursor.fetchall()
     cursor.close()
     conn.close()
     return files
 
 
-def start_classfication_bulk(file_ids: list[int]):
+def start_classification_bulk(file_ids: list[int]):
     """
-    여러 FILE_ID를 한 번에 IS_CLASSFICATION = 1로 변경
+    여러 FILE_ID를 한 번에 IS_CLASSIFICATION = 1로 변경
     """
     if not file_ids:
         return
@@ -38,7 +38,7 @@ def start_classfication_bulk(file_ids: list[int]):
     cursor = conn.cursor()
 
     cursor.executemany(
-        "UPDATE FILES SET IS_CLASSFICATION = 1 WHERE FILE_ID = :fid",
+        "UPDATE FILES SET IS_CLASSIFICATION = 1 WHERE FILE_ID = :fid",
         [{"fid": fid} for fid in file_ids]
     )
 
@@ -47,9 +47,9 @@ def start_classfication_bulk(file_ids: list[int]):
     conn.close()
 
 
-def done_classfication(file_id, result):
+def done_classification(file_id, result):
     """
-    분류 완료 후 IS_CLASSFICATION 컬럼 및 결과 업데이트
+    분류 완료 후 IS_CLASSIFICATION 컬럼 및 결과 업데이트
     file: {"file_id": int, "result": str}
     """
     conn = get_connection()
@@ -57,8 +57,8 @@ def done_classfication(file_id, result):
     cursor.execute(
         """
         UPDATE FILES
-        SET IS_CLASSFICATION = 2,
-            CLASSFICATION_RESULT = :result
+        SET IS_CLASSIFICATION = 2,
+            CLASSIFICATION_RESULT = :result
         WHERE FILE_ID = :fid
         """,
         {"fid": file_id, "result": result}
@@ -66,3 +66,7 @@ def done_classfication(file_id, result):
     conn.commit()
     cursor.close()
     conn.close()
+
+
+def error_classification(file_id):
+    return

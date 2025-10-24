@@ -12,6 +12,18 @@ def get_connection():
     )
 
 
+def get_processing_file():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT FILE_ID FROM FILES WHERE IS_TRANSFORM = 1 ORDER BY FILE_ID"
+    )
+    file_set = set([f[0] for f in cursor.fetchall()])
+    cursor.close()
+    conn.close()
+    return file_set
+
+
 def get_unprocessed_files():
     """
     IS_TRANSFORM이 0, 1인 파일 조회
@@ -21,8 +33,7 @@ def get_unprocessed_files():
     cursor.execute(
         "SELECT FILE_ID, FILE_TYPE, IS_TRANSFORM FROM FILES WHERE IS_TRANSFORM < 2 ORDER BY FILE_ID"
     )
-
-    files = [{'FILE_ID': f[0], 'FILE_TYPE': f[1], 'IS_TRANSFORM': f[2]} for f in cursor.fetchall()]
+    files = cursor.fetchall()
     cursor.close()
     conn.close()
     return files

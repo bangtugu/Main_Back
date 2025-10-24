@@ -36,3 +36,23 @@ def insert_file_record(file_id, original_name, ftype, user_id):
     cursor.close()
     conn.close()
     return file_id
+
+
+def get_user_files(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT FILE_ID, FILE_NAME, FILE_TYPE, IS_TRANSFORM, IS_CLASSFICATION, CLASSFICATION_RESULT FROM FILES WHERE USER_ID = :user_id",
+        {"user_id": user_id}
+    )
+    files = [{'FILE_ID': f[0],
+              'FILE_NAME': f[1],
+              'FILE_TYPE': f[2],
+              'IS_TRANSFORM': f[3],
+              'IS_CLASSFICATION': f[4],
+              'CLASSFICATION_RESULT': f[5]
+              } for f in cursor.fetchall()]
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return files

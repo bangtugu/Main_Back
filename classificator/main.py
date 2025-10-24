@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-import requests, threading
 import db, utils
 import uvicorn
 
-app = FastAPI(title="Extract_Manager")
+app = FastAPI(title="Classificator")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,9 +18,9 @@ check_set = set()
 
 
 @app.post("/new_file/")
-async def get_new_file(request: dict):
+async def new_file(request: dict):
     """
-    업로더에서 전달된 파일 목록을 처리
+    extractor에서 전달된 파일 목록을 처리
     expected format:
     {
         "files": [
@@ -31,31 +30,34 @@ async def get_new_file(request: dict):
     }
     """
     json_files = request.get("files", [])
+    print(json_files)
     files = [(f["FILE_ID"], f["FILE_TYPE"]) for f in json_files]
 
-    utils.handle_files(files)
+    utils.handle_files(files)  # 분류 처리 전용 utils 함수
     return {"status": "dispatched", "files": files}
 
 
-def dispatch_unextracted_files():
+def dispatch_unclassified_files():
     """
-    DB에서 아직 추출되지 않은 파일 조회 후 처리
+    DB에서 아직 분류되지 않은 파일 조회 후 처리
     """
     global check_set
-    files = db.get_unprocessed_files()
+    print('get unclassification files')
+    files = db.get_unclassified_files()  # IS_CLASSiFICATION < 2인 파일
+    print(files)
     temp_set = set()
     temp_lst = []
-    for file_id, file_type, is_transform in files:
-        if is_transform and file_id not in check_set:
+    for file_id, file_type, is_classification in files:
+        if is_classification and file_id not in check_set:
             temp_set.add(file_id)
         else:
             temp_lst.append([file_id, file_type])
-
+    print(check_set, temp_set, temp_lst)
     check_set = temp_set
     if not temp_lst:
-        print("[INFO] No unextracted files found.")
+        print("[INFO] No unclassified files found.")
     else:
-        print(f"[INFO] Found {len(temp_lst)} unextracted files. Dispatching...")
+        print(f"[INFO] Found {len(temp_lst)} unclassified files. Dispatching...")
         utils.handle_files(temp_lst)
 
 
@@ -63,21 +65,19 @@ def dispatch_unextracted_files():
 # APScheduler 설정
 # ==============================
 scheduler = BackgroundScheduler()
-# 5분마다 dispatch_unextracted_files 호출
-scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=5)
+scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=1)
 scheduler.start()
 
-# FastAPI 종료 시 스케줄러 종료
 @app.on_event("shutdown")
 def shutdown_event():
     scheduler.shutdown()
 
 
 if __name__ == "__main__":
-    print("[INFO] Starting Extract Manager API on port 8001...")
+    print("[INFO] Starting Classificator API on port 8002...")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8001,
-        reload=True
+        port=8002,
+        # reload=True
     )
