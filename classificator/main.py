@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 import db, utils
 import uvicorn
+from fastapi.responses import JSONResponse
+from fastapi import BackgroundTasks
+
 
 app = FastAPI(title="Classificator")
 
@@ -18,7 +21,7 @@ check_set = set()
 
 
 @app.post("/new_file/")
-async def new_file(request: dict):
+async def new_file(request: dict, background_tasks: BackgroundTasks):
     """
     extractor에서 전달된 파일 목록을 처리
     expected format:
@@ -33,7 +36,7 @@ async def new_file(request: dict):
     print(json_files)
     files = [(f["FILE_ID"], f["FILE_TYPE"]) for f in json_files]
 
-    utils.handle_files(files)  # 분류 처리 전용 utils 함수
+    background_tasks.add_task(utils.handle_files, files)
     return {"status": "dispatched", "files": files}
 
 
@@ -65,7 +68,7 @@ def dispatch_unclassified_files():
 # APScheduler 설정
 # ==============================
 scheduler = BackgroundScheduler()
-scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=5)
+scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=1)
 scheduler.start()
 
 @app.on_event("shutdown")

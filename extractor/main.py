@@ -4,6 +4,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import requests, threading
 import db, utils
 import uvicorn
+from fastapi import BackgroundTasks
+
 
 app = FastAPI(title="Extract_Manager")
 
@@ -19,7 +21,7 @@ check_set = set()
 
 
 @app.post("/new_file/")
-async def get_new_file(request: dict):
+async def get_new_file(request: dict, background_tasks: BackgroundTasks):
     """
     업로더에서 전달된 파일 목록을 처리
     expected format:
@@ -33,7 +35,7 @@ async def get_new_file(request: dict):
     json_files = request.get("files", [])
     files = [(f["FILE_ID"], f["FILE_TYPE"]) for f in json_files]
 
-    utils.handle_files(files)
+    background_tasks.add_task(utils.handle_files, files)
     return {"status": "dispatched", "files": files}
 
 
@@ -64,7 +66,7 @@ def dispatch_unextracted_files():
 # ==============================
 scheduler = BackgroundScheduler()
 # 5분마다 dispatch_unextracted_files 호출
-scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=5)
+scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=1)
 scheduler.start()
 
 # FastAPI 종료 시 스케줄러 종료

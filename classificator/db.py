@@ -19,7 +19,7 @@ def get_unclassified_files():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID, FILE_TYPE, IS_CLASSIFICATION, FOLDER_ID FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSIFICATION < 2 ORDER BY FILE_ID"
+        "SELECT FILE_ID, FILE_TYPE, IS_CLASSIFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSIFICATION < 2 ORDER BY FILE_ID"
     )
     files = cursor.fetchall()
     cursor.close()

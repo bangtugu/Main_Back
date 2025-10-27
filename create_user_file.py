@@ -16,15 +16,20 @@ def create_tables_and_sequences():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 기존 존재 시 삭제
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE FOLDERS_CATEGORY'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE FOLDERS'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE FILES'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE USERS'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USER_ID'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_FOLDER_ID'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_FILE_ID'; EXCEPTION WHEN OTHERS THEN NULL; END;")
-    cursor.execute("BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CATEGORY_ID'; EXCEPTION WHEN OTHERS THEN NULL; END;")
+    # ---------------- 기존 테이블 및 시퀀스 삭제 ----------------
+    drop_statements = [
+        "DROP TABLE FOLDERS_CATEGORY",
+        "DROP TABLE FOLDERS",
+        "DROP TABLE FILES",
+        "DROP TABLE LOGS",
+        "DROP TABLE USERS",
+        "DROP SEQUENCE SEQ_USER_ID",
+        "DROP SEQUENCE SEQ_FOLDER_ID",
+        "DROP SEQUENCE SEQ_FILE_ID",
+        "DROP SEQUENCE SEQ_LOG_ID"
+    ]
+    for stmt in drop_statements:
+        cursor.execute(f"BEGIN EXECUTE IMMEDIATE '{stmt}'; EXCEPTION WHEN OTHERS THEN NULL; END;")
 
     try:
         # ---------------- USERS ----------------
@@ -39,10 +44,7 @@ def create_tables_and_sequences():
             CREATED_AT DATE DEFAULT SYSDATE
         )
         """)
-
-        cursor.execute("""
-        CREATE SEQUENCE SEQ_USER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
-        """)
+        cursor.execute("CREATE SEQUENCE SEQ_USER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
         # ---------------- FOLDERS ----------------
         cursor.execute("""
@@ -59,10 +61,7 @@ def create_tables_and_sequences():
                 ON DELETE CASCADE
         )
         """)
-
-        cursor.execute("""
-        CREATE SEQUENCE SEQ_FOLDER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
-        """)
+        cursor.execute("CREATE SEQUENCE SEQ_FOLDER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
         # ---------------- FILES ----------------
         cursor.execute("""
@@ -86,23 +85,7 @@ def create_tables_and_sequences():
                 ON DELETE SET NULL
         )
         """)
-
-        # ---------------- FOLDERS_CATEGORY ----------------
-        cursor.execute("""
-        CREATE TABLE FOLDERS_CATEGORY (
-            CATEGORY_ID NUMBER PRIMARY KEY,
-            FOLDER_ID NUMBER NOT NULL,
-            CATEGORY_NAME VARCHAR2(200),
-            CONSTRAINT FK_FOLDER_CATEGORY FOREIGN KEY (FOLDER_ID)
-                REFERENCES FOLDERS(FOLDER_ID)
-                ON DELETE CASCADE
-        )
-        """)
-
-        cursor.execute("""
-        CREATE SEQUENCE SEQ_CATEGORY_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
-        """)
-
+        
         # ---------------- LOGS ----------------
         cursor.execute("""
         CREATE TABLE LOGS (
@@ -115,9 +98,18 @@ def create_tables_and_sequences():
                 ON DELETE SET NULL
         )
         """)
+        cursor.execute("CREATE SEQUENCE SEQ_LOG_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
+        # ---------------- FOLDERS_CATEGORY (리팩터링 버전) ----------------
         cursor.execute("""
-        CREATE SEQUENCE SEQ_LOG_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+        CREATE TABLE FOLDERS_CATEGORY (
+            FOLDER_ID NUMBER NOT NULL,
+            CATEGORY_NAME VARCHAR2(200) NOT NULL,
+            CONSTRAINT PK_FOLDER_CATEGORY PRIMARY KEY (FOLDER_ID, CATEGORY_NAME),
+            CONSTRAINT FK_FOLDER_CATEGORY FOREIGN KEY (FOLDER_ID)
+                REFERENCES FOLDERS(FOLDER_ID)
+                ON DELETE CASCADE
+        )
         """)
 
         conn.commit()
@@ -133,16 +125,16 @@ def create_tables_and_sequences():
         VALUES (SEQ_FOLDER_ID.NEXTVAL, 1, 'Default Folder')
         """)
         cursor.execute("""
-        INSERT INTO FOLDERS_CATEGORY (CATEGORY_ID, FOLDER_ID, CATEGORY_NAME)
-        VALUES (SEQ_CATEGORY_ID.NEXTVAL, 1, '회의록')
+        INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
+        VALUES (1, '회의록')
         """)
         cursor.execute("""
-        INSERT INTO FOLDERS_CATEGORY (CATEGORY_ID, FOLDER_ID, CATEGORY_NAME)
-        VALUES (SEQ_CATEGORY_ID.NEXTVAL, 1, '보고서')
+        INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
+        VALUES (1, '보고서')
         """)
         cursor.execute("""
-        INSERT INTO FOLDERS_CATEGORY (CATEGORY_ID, FOLDER_ID, CATEGORY_NAME)
-        VALUES (SEQ_CATEGORY_ID.NEXTVAL, 1, '수불대장')
+        INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
+        VALUES (1, '수불대장')
         """)
         conn.commit()
         print("[INFO] Sample USER and FOLDER inserted.")

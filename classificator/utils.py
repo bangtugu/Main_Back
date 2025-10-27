@@ -21,7 +21,7 @@ def classify_file(text, file_type, categories):
     - 출력은 반드시 하나의 category 문자열
     """
     if not categories:
-        categories = ['보고서', '회의록']
+        categories = ['보고서', '회의록', '기타']
 
     try:
         system_prompt = (
@@ -48,19 +48,21 @@ def classify_file(text, file_type, categories):
         response.raise_for_status()
 
         raw_text = response.json().get("response", "")
-
+        print(raw_text)
         # 정규식으로 JSON 부분만 추출
         match = re.search(r'\{"category"\s*:\s*".*?"\}', raw_text)
-        if match:
+        print(match.group())
+        print(json.loads(match.group()))
+        try:
             classification_json = json.loads(match.group())
-        else:
-            classification_json = {"category": "Null"}
+        except:
+            classification_json = {"category": "기타"}
+
+        if classification_json["category"] not in categories:
+            classification_json["category"] = "기타"
 
     except Exception as e:
         return "error", {"category": f"error: {e}"}
-
-    if classification_json["category"] == "Null":
-        return "error", {}
 
     return "done", classification_json["category"]
 

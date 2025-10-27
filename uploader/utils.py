@@ -3,7 +3,7 @@ import os
 import shutil
 import zipfile
 import db
-import requests
+from fastapi import BackgroundTasks
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_files")
@@ -13,7 +13,23 @@ EXTRACTOR_URL = "http://localhost:8001/new_file/"
 SUPPORTED_EXTENSIONS = {".pdf", ".hwp", ".docx", ".pptx", ".xlsx",
                         ".jpg", ".jpeg", ".png", ".zip", ".txt"}
 
-def upload_files(user_id, folder_id, files, current_file_index):
+
+def send_to_extractor(recorded):
+    """
+    백그라운드에서 extractor 호출
+    """
+    import requests
+    try:
+        requests.post(EXTRACTOR_URL, json={"files": recorded}, timeout=None)
+        print("[INFO] Extractor request sent")
+    except Exception as e:
+        print(f"[ERROR] extractor request failed: {e}")
+
+
+def upload_files(user_id, folder_id, files, current_file_index, background_tasks: BackgroundTasks):
+    """
+    파일 업로드 처리 후, extractor 호출을 백그라운드에서 실행
+    """
     results = {}
     recorded = []
 
@@ -25,13 +41,13 @@ def upload_files(user_id, folder_id, files, current_file_index):
                 shutil.copyfileobj(file.file, f)
 
             record_type = ext.replace('.', '') if ext in SUPPORTED_EXTENSIONS else "unsupported"
-
             db.insert_file_record(current_file_index, file.filename, record_type, user_id, folder_id)
 
             recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
             results[file.filename] = "success"
             current_file_index += 1
 
+            # zip 파일 처리
             if ext == ".zip":
                 with zipfile.ZipFile(save_path, 'r') as zip_ref:
                     for inner_file in zip_ref.namelist():
@@ -52,6 +68,7 @@ def upload_files(user_id, folder_id, files, current_file_index):
         except Exception as e:
             results[file.filename] = f"fail: {str(e)}"
 
-    requests.post(EXTRACTOR_URL, json={"files": recorded}, timeout=None)
-    return current_file_index, results
+    # 백그라운드에서 extractor 호출
+    background_tasks.add_task(send_to_extractor, recorded)
 
+    return current_file_index, results
