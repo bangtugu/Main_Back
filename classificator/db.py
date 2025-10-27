@@ -19,7 +19,7 @@ def get_unclassified_files():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT FILE_ID, FILE_TYPE, IS_CLASSIFICATION FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSIFICATION < 2 ORDER BY FILE_ID"
+        "SELECT FILE_ID, FILE_TYPE, IS_CLASSIFICATION, FOLDER_ID FROM FILES WHERE IS_TRANSFORM = 2 and IS_CLASSIFICATION < 2 ORDER BY FILE_ID"
     )
     files = cursor.fetchall()
     cursor.close()
@@ -58,7 +58,7 @@ def done_classification(file_id, result):
         """
         UPDATE FILES
         SET IS_CLASSIFICATION = 2,
-            CLASSIFICATION_RESULT = :result
+            CATEGORY = :result
         WHERE FILE_ID = :fid
         """,
         {"fid": file_id, "result": result}
@@ -70,3 +70,59 @@ def done_classification(file_id, result):
 
 def error_classification(file_id):
     return
+
+
+def get_folder_ids_for_files(file_ids):
+    """
+    file_ids: [1, 2, 3, ...]
+    return: {file_id: folder_id, ...}
+    """
+    if not file_ids:
+        return {}
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 파라미터 바인딩용 :fid0, :fid1, ...
+    placeholders = [f":fid{i}" for i in range(len(file_ids))]
+    sql = f"""
+        SELECT FILE_ID, FOLDER_ID
+        FROM FILES
+        WHERE FILE_ID IN ({','.join(placeholders)})
+    """
+
+    bind_params = {f"fid{i}": fid for i, fid in enumerate(file_ids)}
+
+    folder_map = {}
+    cursor.execute(sql, bind_params)
+    for file_id, folder_id in cursor.fetchall():
+        folder_map[file_id] = folder_id
+
+    cursor.close()
+    conn.close()
+    return folder_map
+
+
+def get_categories_for_folder(folder_id):
+    """
+    folder_id: int
+    return: [category_name1, category_name2, ...]
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT CATEGORY_NAME
+        FROM FOLDERS_CATEGORY
+        WHERE FOLDER_ID = :fid
+        ORDER BY CATEGORY_ID
+        """,
+        {"fid": folder_id}
+    )
+
+    categories = [row[0] for row in cursor.fetchall()]
+
+    cursor.close()
+    conn.close()
+    return categories

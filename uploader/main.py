@@ -1,8 +1,9 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import db, utils, uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+from typing import List
 
 app = FastAPI(title="File Manager")
 
@@ -20,9 +21,13 @@ current_file_index += 1
 
 
 @app.post("/upload/")
-async def upload_files(user_id: int, files: list[UploadFile] = File(...)):
+async def upload_files(
+    user_id: int = Form(...),
+    folder_id: int = Form(...),
+    files: List[UploadFile] = File(...)
+    ):
     global current_file_index
-    current_file_index, results = utils.simple_upload_files(user_id, files, current_file_index)
+    current_file_index, results = utils.upload_files(user_id, folder_id, files, current_file_index)
     return JSONResponse(content={"uploaded_files": results})
 
 
@@ -37,5 +42,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True
+        # reload=True
     )

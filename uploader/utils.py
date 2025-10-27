@@ -13,7 +13,7 @@ EXTRACTOR_URL = "http://localhost:8001/new_file/"
 SUPPORTED_EXTENSIONS = {".pdf", ".hwp", ".docx", ".pptx", ".xlsx",
                         ".jpg", ".jpeg", ".png", ".zip", ".txt"}
 
-def simple_upload_files(user_id, files, current_file_index):
+def upload_files(user_id, folder_id, files, current_file_index):
     results = {}
     recorded = []
 
@@ -26,7 +26,7 @@ def simple_upload_files(user_id, files, current_file_index):
 
             record_type = ext.replace('.', '') if ext in SUPPORTED_EXTENSIONS else "unsupported"
 
-            db.insert_file_record(current_file_index, file.filename, record_type, user_id)
+            db.insert_file_record(current_file_index, file.filename, record_type, user_id, folder_id)
 
             recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
             results[file.filename] = "success"
@@ -45,7 +45,7 @@ def simple_upload_files(user_id, files, current_file_index):
                         else:
                             record_type = inner_ext.replace('.', '')
 
-                        db.insert_file_record(current_file_index, inner_file, record_type, user_id)
+                        db.insert_file_record(current_file_index, inner_file, record_type, user_id, folder_id)
                         recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
                         current_file_index += 1
 

@@ -44,7 +44,8 @@ def dispatch_unclassified_files():
     global check_set
     print('get unclassification files')
     files = db.get_unclassified_files()  # IS_CLASSiFICATION < 2인 파일
-    print(files)
+    if not files:
+        print("[INFO] No unclassified files found.")
     temp_set = set()
     temp_lst = []
     for file_id, file_type, is_classification in files:
@@ -52,10 +53,9 @@ def dispatch_unclassified_files():
             temp_set.add(file_id)
         else:
             temp_lst.append([file_id, file_type])
-    print(check_set, temp_set, temp_lst)
     check_set = temp_set
     if not temp_lst:
-        print("[INFO] No unclassified files found.")
+        print("[INFO] all unclassified files waiting at check_set.")
     else:
         print(f"[INFO] Found {len(temp_lst)} unclassified files. Dispatching...")
         utils.handle_files(temp_lst)
@@ -65,7 +65,7 @@ def dispatch_unclassified_files():
 # APScheduler 설정
 # ==============================
 scheduler = BackgroundScheduler()
-scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=1)
+scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=5)
 scheduler.start()
 
 @app.on_event("shutdown")

@@ -22,20 +22,20 @@ def get_max_file_id():
     return result
 
 
-def insert_file_record(file_id, original_name, ftype, user_id):
+def insert_file_record(file_id, original_name, ftype, user_id, folder_id):
     """
     file_id: main.py, utils.py에서 관리하는 current_file_index
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO FILES (FILE_ID, USER_ID, FILE_NAME, FILE_TYPE) VALUES (:file_id, :user_id, :title, :ftype)",
-        {"file_id": file_id, "title": original_name, "ftype": ftype, "user_id": user_id}
+        "INSERT INTO FILES (FILE_ID, USER_ID, FILE_NAME, FILE_TYPE, FOLDER_ID) VALUES (:file_id, :user_id, :title, :ftype, :folder_id)",
+        {"file_id": file_id, "title": original_name, "ftype": ftype, "user_id": user_id, "folder_id": folder_id}
     )
     conn.commit()
     cursor.close()
     conn.close()
-    return file_id
+    return
 
 
 def get_user_files(user_id):

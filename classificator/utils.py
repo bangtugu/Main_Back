@@ -10,18 +10,26 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
 
 
-def classify_file(text, file_type):
+import requests
+import json
+import re
+
+def classify_file(text, file_type, categories):
     """
     텍스트 기반 문서 분류
-    - 출력은 반드시 JSON: {"category": "회의록"} 형태
+    - categories: 리스트, 가능한 카테고리
+    - 출력은 반드시 하나의 category 문자열
     """
+    if not categories:
+        categories = ['보고서', '회의록']
+
     try:
         system_prompt = (
             "너는 문서 분류 AI야. 제공된 텍스트를 보고 다음 중 하나를 category 키로 가진 JSON만 출력해:\n"
-            "회의록, 일부개정법률안, 입법, 법률안, 기타.\n"
+            f"{categories}\n"
             f"원본 파일 확장자: {file_type}\n"
             "반드시 JSON 형식만 출력. 다른 텍스트나 따옴표 없이 출력.\n"
-            "예시: {\"category\": \"법률안\"}"
+            "예시: {\"category\": \"" + f"{categories[0]}" + "\"}"
         )
 
         end_prompt = (
@@ -35,93 +43,81 @@ def classify_file(text, file_type):
             "max_tokens": 300,
             "stream": False
         }
-        print('before gemma')
+
         response = requests.post(OLLAMA_API_URL, json=payload)
         response.raise_for_status()
-        # resp_json = response.json()
-        # print(2, resp_json)
-        # raw_text = resp_json.get("response", "")
-        # print(3, raw_text)
-        # clean_text = raw_text.replace("```json", "").replace("```", "").strip()
-        # print(4, clean_text)
-        # try:
-        #     classification_json = json.loads(clean_text)
-        # except json.JSONDecodeError:
-        #     classification_json = {"category": "알 수 없음"}
-        # print(5, classification_json)
 
+        raw_text = response.json().get("response", "")
 
-        # print(raw_text)
-
-        # print('after gemma')
-        # # print(raw_text)
-        # # 🔹 JSON 안전 파싱
-        # match = re.search(r"\{.*?\}", raw_text, re.DOTALL)
-        # print('match')
-        # if match:
-        #     print(match)
-        #     classification_json = json.loads(match.group())
-        # else:
-        #     classification_json = {"category": "알 수 없음"}
-        # print('end')
-
-
-        resp_json = response.json()
-        print(2, resp_json)
-        raw_text = resp_json.get("response", "")
-        print(3, raw_text)
-        clean_text = raw_text.replace("```json", "").replace("```", "").strip()
-        print(4, clean_text)
-        try:
-            classification_json = json.loads(clean_text)
-        except json.JSONDecodeError:
-            classification_json = {"category": "알 수 없음"}
-        print(5, classification_json)
+        # 정규식으로 JSON 부분만 추출
+        match = re.search(r'\{"category"\s*:\s*".*?"\}', raw_text)
+        if match:
+            classification_json = json.loads(match.group())
+        else:
+            classification_json = {"category": "Null"}
 
     except Exception as e:
         return "error", {"category": f"error: {e}"}
 
+    if classification_json["category"] == "Null":
+        return "error", {}
+
     return "done", classification_json["category"]
 
-    
-
-def classify_text(text, instruction=None):
-    """
-    텍스트를 Gemma3 모델로 분류
-    """
-    payload = {
-        "model": "gemma3",
-        "prompt": text if not instruction else f"{instruction}\n\n{text}",
-        "max_tokens": 512
-    }
-    try:
-        resp = requests.post(OLLAMA_API_URL, json=payload)
-        resp.raise_for_status()
-        completion = resp.json().get("completion", "").strip()
-        return completion
-    except Exception as e:
-        print(f"[ERROR] Ollama classify failed: {e}")
-        return None
 
 
 def handle_files(files):
-    
+    """
+    files: [(file_id, file_type), ...]
+    폴더 단위로 그룹화해서 classification 수행
+    """
+
+    # 1️⃣ classification 시작 DB 기록
     db.start_classification_bulk([f[0] for f in files])
-    print(files)
+    print("[INFO] Files to classify:", files)
+
+    # 2️⃣ 파일별 folder_id 한 번에 가져오기
+    file_ids = [f[0] for f in files]
+    file_folder_map = db.get_folder_ids_for_files(file_ids)
+    # 반환 예시: {1: 101, 2: 101, 3: 102, ...}
+
+    # 3️⃣ 폴더별로 파일 묶기
+    from collections import defaultdict
+    folder_files = defaultdict(list)
     for file_id, file_type in files:
-        print(file_id, file_type)
-        try:
-            txt_path = os.path.join(EXTRACT_DIR, f"{file_id}_extracted.txt")
-            print(txt_path)
-            with open(txt_path, "r", encoding="utf-8") as f:
-                text = f.read()
-            print(type(text))
-            result, category = classify_file(text, file_type)
-            print(file_id, result, category)
-            if result == "done":
-                db.done_classification(file_id, category)
-            else:
+        folder_id = file_folder_map.get(file_id)
+        if folder_id is None:
+            print(f"[WARN] folder_id not found for file {file_id}")
+            continue
+        folder_files[folder_id].append((file_id, file_type))
+
+    # 4️⃣ 폴더 단위로 classification 수행
+    for folder_id, files_in_folder in folder_files.items():
+        # 폴더 카테고리 가져오기 (리스트)
+        categories = db.get_categories_for_folder(folder_id)
+        print(f"[INFO] Folder {folder_id}, categories: {categories}, files: {files_in_folder}")
+        if not categories:
+            print(f"[INFO] folder {folder_id}\'s categories is None.")
+            for file_id, _ in files_in_folder:
+                db.done_classification(file_id, 'Null')
+            continue
+
+        for file_id, file_type in files_in_folder:
+            try:
+                txt_path = os.path.join(EXTRACT_DIR, f"{file_id}_extracted.txt")
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+
+                # classify_file은 category 리스트 인자로 전달
+                result, category = classify_file(text, file_type, categories)
+                print(f"[INFO] File {file_id}: {result}")
+
+                if result == "done":
+                    db.done_classification(file_id, category)
+                else:
+                    print(f"[ERROR] {file_id} classfication FAILED")
+                    db.error_classification(file_id)
+
+            except Exception as e:
+                print(f"[ERROR] File {file_id}: {e}")
                 db.error_classification(file_id)
-        except:
-            print('error')
-            db.error_classification(file_id)
