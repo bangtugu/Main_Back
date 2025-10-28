@@ -42,6 +42,7 @@ def upload_files(user_id, folder_id, files, current_file_index, background_tasks
 
             record_type = ext.replace('.', '') if ext in SUPPORTED_EXTENSIONS else "unsupported"
             db.insert_file_record(current_file_index, file.filename, record_type, user_id, folder_id)
+            db.upload_file_log(file.filename)
 
             recorded.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
             results[file.filename] = "success"

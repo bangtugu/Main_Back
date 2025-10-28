@@ -52,6 +52,7 @@ def create_tables_and_sequences():
             FOLDER_ID NUMBER PRIMARY KEY,
             USER_ID NUMBER NOT NULL,
             FOLDER_NAME VARCHAR2(200),
+            FILE_CNT NUMBER DEFAULT 0,
             CATEGORY_LIST VARCHAR2(500),
             CONNECTED_DIRECTORY VARCHAR2(300),
             CLASSIFICATION_AFTER_CHANGE NUMBER(1) DEFAULT 1,

@@ -32,7 +32,7 @@ async def upload_files(
     current_file_index, results = utils.upload_files(
         user_id, folder_id, files, current_file_index, background_tasks
     )
-    return JSONResponse(content={"status": "upload_started", "uploaded_files": results})
+    return JSONResponse(content={"status": "upload_complete", "uploaded_files": results})
 
 
 @app.get("/folders/{user_id}")
@@ -45,12 +45,13 @@ async def get_user_folders(user_id: int):
 
 
 @app.get("/files/{folder_id}")
-async def get_folder_files(folder_id: int):
+async def get_folder_categories_and_files(folder_id: int):
     """
     특정 폴더(folder_id)의 파일 목록 반환
     """
     files = db.get_files_in_folder(folder_id)
-    return JSONResponse(content={"files": files})
+    categories = db.get_categories_in_folder(folder_id)
+    return JSONResponse(content={"files": files, "categories": categories})
 
 
 @app.post("/folders/create/")
@@ -68,10 +69,16 @@ async def rename_folder(folder_id: int, new_name: str = Form(...)):
         return JSONResponse(content={"status": "failed", "message": "Folder not found"})
 
 
-@app.put("/folders/{folder_id}/categories/")
-async def update_folder_categories(folder_id: int, categories: List[str]):
-    db.update_folder_categories(folder_id, categories)
-    return JSONResponse(content={"status": "success", "updated_categories": categories})
+@app.post("/folders/{folder_id}/category/")
+async def create_folder_category(folder_id: int, category: str):
+    db.create_folder_category(folder_id, category)
+    return JSONResponse(content={"status": "success", "created_category": category})
+
+
+@app.delete("/folders/{folder_id}/category/")
+async def delete_folder_category(folder_id: int, category: str):
+    db.update_folder_categories(folder_id, category)
+    return JSONResponse(content={"status": "success", "deleted_categories": category})
 
 
 @app.delete("/folders/{folder_id}")

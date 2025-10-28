@@ -116,7 +116,6 @@ def get_categories_for_folder(folder_id):
         SELECT CATEGORY_NAME
         FROM FOLDERS_CATEGORY
         WHERE FOLDER_ID = :fid
-        ORDER BY CATEGORY_ID
         """,
         {"fid": folder_id}
     )

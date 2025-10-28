@@ -32,6 +32,15 @@ def insert_file_record(file_id, original_name, ftype, user_id, folder_id):
         "INSERT INTO FILES (FILE_ID, USER_ID, FILE_NAME, FILE_TYPE, FOLDER_ID) VALUES (:file_id, :user_id, :title, :ftype, :folder_id)",
         {"file_id": file_id, "title": original_name, "ftype": ftype, "user_id": user_id, "folder_id": folder_id}
     )
+    cursor.execute(
+        """
+        UPDATE FOLDERS
+        SET FILE_COUNT = NVL(FILE_COUNT, 0) + 1,
+            LAST_WORK = SYSDATE
+        WHERE FOLDER_ID = :folder_id
+        """,
+        {"folder_id": folder_id}
+    )
     conn.commit()
     cursor.close()
     conn.close()
@@ -58,38 +67,24 @@ def get_user_files(user_id):
     return files
 
 
-def get_user_folders_with_details(user_id: int):
+def get_user_folders(user_id: int):
     """
-    유저 ID에 해당하는 모든 폴더 정보 + 각 폴더의 파일 개수 + 카테고리 리스트
+    특정 유저의 모든 폴더 정보를 가져옴.
+    - 각 폴더의 파일 개수 포함
     """
     conn = get_connection()
     cursor = conn.cursor()
 
     query = """
-        SELECT 
+        SELECT
             f.FOLDER_ID,
-            f.USER_ID,
             f.FOLDER_NAME,
-            f.CATEGORY_LIST,
             f.CONNECTED_DIRECTORY,
             f.CLASSIFICATION_AFTER_CHANGE,
-            f.LAST_WORK,
-            NVL(COUNT(DISTINCT fi.FILE_ID), 0) AS FILE_COUNT,
-            LISTAGG(fc.CATEGORY_NAME, ',') WITHIN GROUP (ORDER BY fc.CATEGORY_NAME) AS CATEGORY_NAMES
-        FROM FOLDERS f
-        LEFT JOIN FILES fi 
-            ON f.FOLDER_ID = fi.FOLDER_ID
-        LEFT JOIN FOLDERS_CATEGORY fc
-            ON f.FOLDER_ID = fc.FOLDER_ID
-        WHERE f.USER_ID = :user_id
-        GROUP BY 
-            f.FOLDER_ID,
-            f.USER_ID,
-            f.FOLDER_NAME,
-            f.CATEGORY_LIST,
-            f.CONNECTED_DIRECTORY,
-            f.CLASSIFICATION_AFTER_CHANGE,
+            f.FILE_CNT,
             f.LAST_WORK
+        FROM FOLDERS f
+        WHERE f.USER_ID = :user_id
         ORDER BY f.LAST_WORK DESC
     """
 
@@ -97,19 +92,32 @@ def get_user_folders_with_details(user_id: int):
     columns = [col[0].lower() for col in cursor.description]
     rows = cursor.fetchall()
 
-    results = []
-    for row in rows:
-        record = dict(zip(columns, row))
-        # CATEGORY_NAMES를 리스트 형태로 변환
-        if record.get("category_names"):
-            record["category_names"] = record["category_names"].split(",")
-        else:
-            record["category_names"] = []
-        results.append(record)
+    results = [dict(zip(columns, row)) for row in rows]
 
     cursor.close()
     conn.close()
     return results
+
+
+def get_categories_in_folder(folder_id: int):
+    """
+    특정 폴더 ID에 포함된 카테고리 조회
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT CATEGORY_NAME
+        FROM FOLDERS_CATEGORY
+        WHERE FOLDER_ID = :folder_id
+        ORDER BY CATEGORY_NAME
+    """, {"folder_id": folder_id})
+
+    categories = [row[0] for row in cursor.fetchall()]
+
+    cursor.close()
+    conn.close()
+    return categories
 
 
 def get_files_in_folder(folder_id: int):
@@ -117,7 +125,7 @@ def get_files_in_folder(folder_id: int):
     특정 폴더 ID에 포함된 파일들의 상세 정보를 조회
     (오라클 11g 호환)
     """
-    conn = oracledb.connect(user="YOUR_USER", password="YOUR_PW", dsn="YOUR_DSN")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -127,12 +135,12 @@ def get_files_in_folder(folder_id: int):
             f.FILE_TYPE,
             f.FILE_PATH,
             f.IS_TRANSFORM,
+            f.TRANSFORM_TXT_PATH
             f.IS_CLASSIFICATION,
             f.CATEGORY,
             f.UPLOADED_AT,
             NVL(u.USER_LOGIN_ID, 'unknown') AS USER_LOGIN_ID
         FROM FILES f
-        LEFT JOIN USERS u ON f.USER_ID = u.USER_ID
         WHERE f.FOLDER_ID = :folder_id
         ORDER BY f.UPLOADED_AT DESC
     """
@@ -180,24 +188,44 @@ def rename_folder(folder_id: int, new_name: str):
     return rowcount > 0
 
 
-def update_folder_categories(folder_id: int, categories: list[str]):
+def create_folder_category(folder_id: int, category: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 기존 카테고리 삭제
-    cursor.execute("DELETE FROM FOLDERS_CATEGORY WHERE FOLDER_ID = :fid", {"fid": folder_id})
+    # 카테고리 추가
+    cursor.execute("""
+        INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
+        VALUES (:fid, :category)
+    """, {"fid": folder_id, "category": category})
 
-    # 새 카테고리 추가
-    for cname in categories:
-        cursor.execute("""
-            INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
-            VALUES (:fid, :cname)
-        """, {"fid": folder_id, "cname": cname})
-
-    # FOLDERS 테이블의 CATEGORY_LIST 갱신
+    # FOLDERS 테이블 업데이트
     cursor.execute("""
         UPDATE FOLDERS 
-        SET LAST_WORK = SYSDATE
+        SET LAST_WORK = SYSDATE,
+            CLASSIFICATION_AFTER_CHANGE = 0
+        WHERE FOLDER_ID = :fid
+    """, {"fid": folder_id})
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def delete_folder_category(folder_id: int, category: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 카테고리 삭제
+    cursor.execute("""
+        DELETE FROM FOLDERS_CATEGORY
+        WHERE FOLDER_ID = :fid AND CATEGORY_NAME = :category
+    """, {"fid": folder_id, "category": category})
+
+    # FOLDERS 테이블 업데이트
+    cursor.execute("""
+        UPDATE FOLDERS 
+        SET LAST_WORK = SYSDATE,
+            CLASSIFICATION_AFTER_CHANGE = 0
         WHERE FOLDER_ID = :fid
     """, {"fid": folder_id})
 
@@ -224,3 +252,18 @@ def delete_folder(folder_id: int):
     finally:
         cursor.close()
         conn.close()
+
+
+def user_last_work(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE FOLDERS 
+        SET LAST_WORK = SYSDATE
+        WHERE FOLDER_ID = :user_id
+    """, {"user_id": user_id})
+
+    conn.commit()
+    cursor.close()
+    conn.close()
