@@ -26,34 +26,38 @@ def send_to_extractor(recorded):
         print(f"[ERROR] extractor request failed: {e}")
 
 
-def zip_handler(user_id, folder_id, zip_file_id, current_file_index):
+def zip_handler(user_id, folder_id, zipfile_id, current_file_index, background_tasks):
 
     # db에서 불러오거나, 받거나
-    zip_file_path = ''
-    ext = ''
+    ext = '.zip'
+    results = {}
     extract_target_lst = []
-    save_path = os.path.join(UPLOAD_DIR, f"{current_file_index}{ext}")
+    save_path = os.path.join(UPLOAD_DIR, f"{zipfile_id}{ext}")
 
+    print(f'[UPLOAD] file {zipfile_id}.zip unzip')
     with zipfile.ZipFile(save_path, 'r') as zip_ref:
-        for inner_file in zip_ref.namelist():
-            inner_ext = os.path.splitext(inner_file)[1].lower()
-            inner_save_path = os.path.join(UPLOAD_DIR, f"{current_file_index}{inner_ext}")
-            zip_ref.extract(inner_file, UPLOAD_DIR)
-            os.rename(os.path.join(UPLOAD_DIR, inner_file), inner_save_path)
+        for file in zip_ref.namelist():
+            try:
+                inner_ext = os.path.splitext(file)[1].lower()
+                inner_save_path = os.path.join(UPLOAD_DIR, f"{current_file_index}{inner_ext}")
+                zip_ref.extract(file, UPLOAD_DIR)
+                os.rename(os.path.join(UPLOAD_DIR, file), inner_save_path)
 
-            if inner_ext not in SUPPORTED_EXTENSIONS or inner_ext == ".zip":
-                record_type = "unsupported"
-            else:
-                record_type = inner_ext.replace('.', '')
+                record_type = inner_ext.replace('.', '') if inner_ext in SUPPORTED_EXTENSIONS else "unsupported"
 
-            db.insert_file_record(current_file_index, inner_file, record_type, user_id, folder_id)
-            extract_target_lst.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
-            current_file_index += 1
+                db.insert_file_record(current_file_index, file, record_type, user_id, folder_id)
+                if record_type not in ('zip', 'unsupported'): 
+                    extract_target_lst.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
+                results[file] = "success"
+                current_file_index += 1
+            
+            except Exception as e:
+                print(e)
+                results[file] = f"fail: {str(e)}"
+
+    background_tasks.add_task(send_to_extractor, extract_target_lst)
+    return current_file_index, results
     
-    files = []
-    return files
-    
-
 
 def upload_files(user_id, folder_id, files, current_file_index, background_tasks: BackgroundTasks):
     """
@@ -71,7 +75,7 @@ def upload_files(user_id, folder_id, files, current_file_index, background_tasks
 
             record_type = ext.replace('.', '') if ext in SUPPORTED_EXTENSIONS else "unsupported"
             db.insert_file_record(current_file_index, file.filename, record_type, user_id, folder_id)
-            db.upload_file_log(file.filename)
+            # db.upload_file_log(file.filename)
             print(f'[UPLOAD] file {current_file_index} uploaded')
 
             if record_type not in ('zip', 'unsupported'): 
@@ -79,29 +83,10 @@ def upload_files(user_id, folder_id, files, current_file_index, background_tasks
             results[file.filename] = "success"
             current_file_index += 1
 
-            # zip 파일 처리
-            # if ext == ".zip":
-            #     with zipfile.ZipFile(save_path, 'r') as zip_ref:
-            #         for inner_file in zip_ref.namelist():
-            #             inner_ext = os.path.splitext(inner_file)[1].lower()
-            #             inner_save_path = os.path.join(UPLOAD_DIR, f"{current_file_index}{inner_ext}")
-            #             zip_ref.extract(inner_file, UPLOAD_DIR)
-            #             os.rename(os.path.join(UPLOAD_DIR, inner_file), inner_save_path)
-
-            #             if inner_ext not in SUPPORTED_EXTENSIONS or inner_ext == ".zip":
-            #                 record_type = "unsupported"
-            #             else:
-            #                 record_type = inner_ext.replace('.', '')
-
-            #             db.insert_file_record(current_file_index, inner_file, record_type, user_id, folder_id)
-            #             extract_target_lst.append({'FILE_ID': current_file_index, 'FILE_TYPE': record_type})
-            #             current_file_index += 1
-
         except Exception as e:
             print(e)
             results[file.filename] = f"fail: {str(e)}"
 
     # 백그라운드에서 extractor 호출
     background_tasks.add_task(send_to_extractor, extract_target_lst)
-
     return current_file_index, results

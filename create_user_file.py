@@ -39,7 +39,7 @@ def create_tables_and_sequences():
             USER_LOGIN_ID VARCHAR2(50) UNIQUE NOT NULL,
             USER_PASSWORD VARCHAR2(200) NOT NULL,
             EMAIL VARCHAR2(100) UNIQUE NOT NULL,
-            ACCESS_KEY VARCHAR2(100),
+            ACCESS_KEY VARCHAR2(512),
             LAST_WORK DATE DEFAULT SYSDATE,
             CREATED_AT DATE DEFAULT SYSDATE
         )
@@ -136,6 +136,26 @@ def create_tables_and_sequences():
         INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
         VALUES (1, '수불대장')
         """)
+        sample_files = [
+            {"file_id": 1, "name": "회의록_2025_1.hwp", "type": "hwp", "folder_id": 1, "category": "회의록"},
+            {"file_id": 2, "name": "회의록_2025_2.hwp", "type": "hwp", "folder_id": 1, "category": "회의록"},
+            {"file_id": 3, "name": "보고서_2025_1.docx", "type": "docx", "folder_id": 1, "category": "보고서"},
+            {"file_id": 4, "name": "보고서_2025_2.docx", "type": "docx", "folder_id": 1, "category": "보고서"},
+            {"file_id": 5, "name": "수불대장_2025.xlsx", "type": "xlsx", "folder_id": 1, "category": "수불대장"},
+        ]
+
+        for f in sample_files:
+            cursor.execute("""
+                INSERT INTO FILES (FILE_ID, USER_ID, FOLDER_ID, FILE_NAME, FILE_TYPE, CATEGORY, IS_TRANSFORM, IS_CLASSIFICATION)
+                VALUES (:file_id, 1, :folder_id, :name, :ftype, :category, 2, 2)
+            """, {
+                "file_id": f["file_id"],
+                "folder_id": f["folder_id"],
+                "name": f["name"],
+                "ftype": f["type"],
+                "category": f["category"]
+            })
+
         conn.commit()
         print("[INFO] Sample USER and FOLDER inserted.")
 

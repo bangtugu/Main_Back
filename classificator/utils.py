@@ -21,26 +21,28 @@ def classify_file(text, file_type, categories):
     - 출력은 반드시 하나의 category 문자열
     """
     if not categories:
-        categories = ['보고서', '회의록', '기타']
+        return "error", {"category": "categories is empty"}
 
     try:
-        system_prompt = (
-            "너는 문서 분류 AI야. 제공된 텍스트를 보고 다음 중 하나를 category 키로 가진 JSON만 출력해:\n"
-            f"{categories}\n"
-            f"원본 파일 확장자: {file_type}\n"
-            "반드시 JSON 형식만 출력. 다른 텍스트나 따옴표 없이 출력.\n"
-            "예시: {\"category\": \"" + f"{categories[0]}" + "\"}"
-        )
-
+        system_prompt = f"""
+            너는 문서 분류 AI야.
+            제공된 텍스트를 보고 반드시 아래 카테고리 중 하나만 선택해서 JSON 형태로 출력해.
+            가능한 카테고리: {categories}
+            반드시 목록 외의 값을 쓰지 말 것.
+            출력은 JSON만 허용하며, 다른 텍스트나 설명은 포함하지 마.
+            파일 원본 확장자: {file_type}
+            예시 출력: {{"category": "{categories[0]}"}} 
+            """
         end_prompt = (
-            "지금까지의 내용을 바탕으로 문서 형식을 JSON으로 반환해. "
-            "출력은 category 키만 포함하고, 다른 텍스트는 포함하지 마."
+            "지금까지 내용을 바탕으로 category 키만 포함한 JSON을 출력해. "
+            "다른 텍스트나 따옴표, 설명 금지."
         )
 
         payload = {
             "model": "gemma3:1b",
             "prompt": f"{system_prompt}\n{text}\n{end_prompt}",
             "max_tokens": 300,
+            "temperature": 0,   # 무작위 출력 줄이기
             "stream": False
         }
 

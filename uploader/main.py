@@ -35,7 +35,7 @@ async def upload_files(
     return JSONResponse(content={"status": "upload_complete", "uploaded_files": results})
 
 
-@app.post("/unzip/{file_id}")
+@app.post("/unzip/")
 async def unzip_zip(
     background_tasks: BackgroundTasks,
     user_id: int = Form(...),
@@ -43,8 +43,10 @@ async def unzip_zip(
     zipfile_id: int = Form(...)
 ):
     global current_file_index
-    utils.zip_handler()
-    return
+    current_file_index, results = utils.zip_handler(
+        user_id, folder_id, zipfile_id, current_file_index, background_tasks              
+        )
+    return JSONResponse(content={"status": "unzip_complete", "uploaded_files": results})
     
 
 @app.get("/folders/{user_id}")
