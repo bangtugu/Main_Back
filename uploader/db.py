@@ -1,4 +1,5 @@
 import oracledb
+import datetime
 
 oracledb.init_oracle_client(
     lib_dir=r"C:\Users\Bangtugu\Desktop\oracle\instantclient-basic-windows.x64-19.28.0.0.0dbru\instantclient_19_28"
@@ -35,7 +36,7 @@ def insert_file_record(file_id, original_name, ftype, user_id, folder_id):
     cursor.execute(
         """
         UPDATE FOLDERS
-        SET FILE_COUNT = NVL(FILE_COUNT, 0) + 1,
+        SET FILE_CNT = NVL(FILE_CNT, 0) + 1,
             LAST_WORK = SYSDATE
         WHERE FOLDER_ID = :folder_id
         """,
@@ -81,8 +82,7 @@ def get_user_folders(user_id: int):
             f.FOLDER_NAME,
             f.CONNECTED_DIRECTORY,
             f.CLASSIFICATION_AFTER_CHANGE,
-            f.FILE_CNT,
-            f.LAST_WORK
+            f.FILE_CNT
         FROM FOLDERS f
         WHERE f.USER_ID = :user_id
         ORDER BY f.LAST_WORK DESC
@@ -135,11 +135,10 @@ def get_files_in_folder(folder_id: int):
             f.FILE_TYPE,
             f.FILE_PATH,
             f.IS_TRANSFORM,
-            f.TRANSFORM_TXT_PATH
+            f.TRANSFORM_TXT_PATH,
             f.IS_CLASSIFICATION,
             f.CATEGORY,
-            f.UPLOADED_AT,
-            NVL(u.USER_LOGIN_ID, 'unknown') AS USER_LOGIN_ID
+            f.UPLOADED_AT
         FROM FILES f
         WHERE f.FOLDER_ID = :folder_id
         ORDER BY f.UPLOADED_AT DESC
@@ -147,7 +146,13 @@ def get_files_in_folder(folder_id: int):
 
     cursor.execute(query, {"folder_id": folder_id})
     columns = [col[0] for col in cursor.description]
-    results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    results = []
+    for row in cursor.fetchall():
+        record = dict(zip(columns, row))
+        # datetime을 ISO 문자열로 변환
+        if isinstance(record.get("UPLOADED_AT"), (datetime.datetime, datetime.date)):
+            record["UPLOADED_AT"] = record["UPLOADED_AT"].isoformat()
+        results.append(record)
 
     cursor.close()
     conn.close()

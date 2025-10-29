@@ -35,13 +35,34 @@ async def upload_files(
     return JSONResponse(content={"status": "upload_complete", "uploaded_files": results})
 
 
+@app.post("/unzip/{file_id}")
+async def unzip_zip(
+    background_tasks: BackgroundTasks,
+    user_id: int = Form(...),
+    folder_id: int = Form(...),
+    zipfile_id: int = Form(...)
+):
+    global current_file_index
+    utils.zip_handler()
+    return
+    
+
 @app.get("/folders/{user_id}")
 async def get_user_folders(user_id: int):
     """
     특정 유저(user_id)의 폴더 목록과 폴더 안 파일 개수를 반환
     """
-    folders = db.get_user_folders_with_details(user_id)
+    folders = db.get_user_folders(user_id)
     return JSONResponse(content={"folders": folders})
+
+
+@app.get("/folders/{folder_id}/category")
+async def get_folder_category(folder_id: int):
+    """
+    특정 폴더(folder_id)의 카테고리 목록 반환
+    """
+    categories = db.get_categories_in_folder(folder_id)
+    return JSONResponse(content={"categories": categories})
 
 
 @app.get("/files/{folder_id}")
@@ -49,8 +70,8 @@ async def get_folder_categories_and_files(folder_id: int):
     """
     특정 폴더(folder_id)의 파일 목록 반환
     """
-    files = db.get_files_in_folder(folder_id)
     categories = db.get_categories_in_folder(folder_id)
+    files = db.get_files_in_folder(folder_id)
     return JSONResponse(content={"files": files, "categories": categories})
 
 
@@ -98,5 +119,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        # reload=True
+        reload=True
     )
