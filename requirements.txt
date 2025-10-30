@@ -12,3 +12,6 @@ passlib
 python-jose[cryptography]
 pydantic[email]
 bcrypt==4.0.1
+requests
+pywin32
+httpx

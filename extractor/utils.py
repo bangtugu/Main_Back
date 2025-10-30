@@ -7,7 +7,7 @@ from image_ocr import run_ocr
 
 SUPPORTED_EXTENSIONS = {"pdf", "hwp", "docx", "pptx", "xlsx",
                         "jpg", "jpeg", "png", "txt"}
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_files")
 CLASSFICATOR_DIR = 'http://localhost:8002/new_file/'

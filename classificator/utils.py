@@ -6,7 +6,7 @@ import re
 
 
 OLLAMA_API_URL = "http://localhost:11434/api/generate"  # ✅ 실제 Ollama 엔드포인트 주소
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
 
 

@@ -44,7 +44,7 @@ def create_tables_and_sequences():
             CREATED_AT DATE DEFAULT SYSDATE
         )
         """)
-        cursor.execute("CREATE SEQUENCE SEQ_USER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
+        cursor.execute("CREATE SEQUENCE USER_ID_SEQ START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
         # ---------------- FOLDERS ----------------
         cursor.execute("""
@@ -61,7 +61,7 @@ def create_tables_and_sequences():
                 ON DELETE CASCADE
         )
         """)
-        cursor.execute("CREATE SEQUENCE SEQ_FOLDER_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
+        cursor.execute("CREATE SEQUENCE FOLDER_ID_SEQ START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
         # ---------------- FILES ----------------
         cursor.execute("""
@@ -98,7 +98,7 @@ def create_tables_and_sequences():
                 ON DELETE SET NULL
         )
         """)
-        cursor.execute("CREATE SEQUENCE SEQ_LOG_ID START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
+        cursor.execute("CREATE SEQUENCE LOG_ID_SEQ START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE")
 
         # ---------------- FOLDERS_CATEGORY (리팩터링 버전) ----------------
         cursor.execute("""
@@ -118,11 +118,11 @@ def create_tables_and_sequences():
         # ---------------- 샘플 데이터 삽입 ----------------
         cursor.execute("""
         INSERT INTO USERS (USER_ID, USER_LOGIN_ID, USER_PASSWORD, EMAIL)
-        VALUES (SEQ_USER_ID.NEXTVAL, 'testuser', 'hashedpassword', 'test@example.com')
+        VALUES (USER_ID_SEQ.NEXTVAL, 'testuser', 'hashedpassword', 'test@example.com')
         """)
         cursor.execute("""
         INSERT INTO FOLDERS (FOLDER_ID, USER_ID, FOLDER_NAME)
-        VALUES (SEQ_FOLDER_ID.NEXTVAL, 1, 'Default Folder')
+        VALUES (FOLDER_ID_SEQ.NEXTVAL, 1, 'Default Folder')
         """)
         cursor.execute("""
         INSERT INTO FOLDERS_CATEGORY (FOLDER_ID, CATEGORY_NAME)
