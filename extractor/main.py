@@ -45,6 +45,8 @@ def dispatch_unextracted_files():
     """
     global check_set
     files = db.get_unprocessed_files()
+    if not files:
+        print("[INFO] No unextracted files found.")
     temp_set = set()
     temp_lst = []
     for file_id, file_type, is_transform in files:
@@ -55,7 +57,7 @@ def dispatch_unextracted_files():
 
     check_set = temp_set
     if not temp_lst:
-        print("[INFO] No unextracted files found.")
+        print("[INFO] all unextracted files in progress.")
     else:
         print(f"[INFO] Found {len(temp_lst)} unextracted files. Dispatching...")
         utils.handle_files(temp_lst)

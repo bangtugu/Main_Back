@@ -20,29 +20,72 @@ LIBREOFFICE_PATH = r"C:\\Program Files\\LibreOffice\\program\\soffice.exe"
 
 def convert_hwp_to_pdf(input_path, output_dir):
     """
-    HWP 파일을 PDF로 변환 후 PDF 경로 반환
+    HWP 문서를 PDF로 변환
     - input_path: 변환할 HWP 파일 경로
-    - output_dir: PDF 저장할 디렉토리
-    """
-    pythoncom.CoInitialize()  # 멀티스레드 환경에서 필수
-    os.makedirs(output_dir, exist_ok=True)
+    - output_dir: PDF 저장 폴더
+    반환: 변환된 PDF 절대경로, 실패 시 None
 
-    base_name = os.path.splitext(os.path.basename(input_path))[0]
-    output_path = os.path.join(output_dir, f"{base_name}.pdf")
+
+
+
+
+    접근 허용 메세지 뜨는거 레지스트리 작업으로 안뜨게 하기
+    https://developer.hancom.com/hwpautomation
+
+
+
+
+
+
+    """
+    pythoncom.CoInitialize()  # 반드시 호출
+    hwp = None
+    pdf_path = None
 
     try:
-        hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
-        hwp.Open(input_path)
-        hwp.SaveAs(output_path, "PDF")  # PDF로 저장
-        hwp.Quit()
-        return output_path
-    except Exception as e:
-        print(f"[ERROR] HWP -> PDF 변환 실패: {e}")
+        # COM 객체 생성
+        hwp = win32com.client.gencache.EnsureDispatch("HWPFrame.HwpObject")
+        
+        # 보안모듈 등록 (필수)
         try:
-            hwp.Quit()
-        except:
-            pass
-        return None
+            hwp.RegisterModule('FilePathCheckDLL', 'AutomationModule')
+        except Exception:
+            print("[WARN] 보안모듈 등록 실패, 이미 등록되어 있을 수 있음")
+
+        # UI 숨김, 테스트 시 True로 확인 가능
+        if hwp.XHwpWindows.Count > 0:
+            hwp.XHwpWindows.Item(0).Visible = False
+
+        # 문서 열기
+        abs_input = os.path.abspath(input_path)
+        hwp.Open(abs_input)
+
+        # PDF 경로 지정
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_path = os.path.abspath(os.path.join(output_dir, f"{base_name}.pdf"))
+
+        # PDF로 저장
+        hwp.SaveAs(pdf_path, "PDF")
+
+        # 저장 확인
+        if not os.path.isfile(pdf_path):
+            print("[ERROR] PDF 파일이 생성되지 않음")
+            pdf_path = None
+        else:
+            print(f"[INFO] HWP -> PDF 변환 성공: {pdf_path}")
+    
+    except Exception as e:
+        print("[ERROR] HWP -> PDF 변환 실패:", e)
+        pdf_path = None
+    finally:
+        if hwp:
+            try:
+                hwp.Quit()
+            except:
+                pass
+        pythoncom.CoUninitialize()  # COM 해제
+
+    return pdf_path
 
 
 def convert_to_pdf(input_path, output_dir):
