@@ -4,6 +4,10 @@ import requests
 import db
 from extract_pdf import extract
 from image_ocr import run_ocr
+import win32com.client
+import pythoncom
+import os
+
 
 SUPPORTED_EXTENSIONS = {"pdf", "hwp", "docx", "pptx", "xlsx",
                         "jpg", "jpeg", "png", "txt"}
@@ -12,6 +16,33 @@ EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_files")
 CLASSFICATOR_DIR = 'http://localhost:8002/new_file/'
 LIBREOFFICE_PATH = r"C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+
+
+def convert_hwp_to_pdf(input_path, output_dir):
+    """
+    HWP 파일을 PDF로 변환 후 PDF 경로 반환
+    - input_path: 변환할 HWP 파일 경로
+    - output_dir: PDF 저장할 디렉토리
+    """
+    pythoncom.CoInitialize()  # 멀티스레드 환경에서 필수
+    os.makedirs(output_dir, exist_ok=True)
+
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    output_path = os.path.join(output_dir, f"{base_name}.pdf")
+
+    try:
+        hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+        hwp.Open(input_path)
+        hwp.SaveAs(output_path, "PDF")  # PDF로 저장
+        hwp.Quit()
+        return output_path
+    except Exception as e:
+        print(f"[ERROR] HWP -> PDF 변환 실패: {e}")
+        try:
+            hwp.Quit()
+        except:
+            pass
+        return None
 
 
 def convert_to_pdf(input_path, output_dir):
@@ -77,7 +108,10 @@ def handle_files(files: list):
             elif file_type in {"jpg", "jpeg", "png"}:
                 text = run_ocr(file_path)
             else:
-                pdf_path = convert_to_pdf(file_path, UPLOAD_DIR)
+                if file_type == "hwp":
+                    pdf_path = convert_hwp_to_pdf(file_path, UPLOAD_DIR)
+                else:
+                    pdf_path = convert_to_pdf(file_path, UPLOAD_DIR)
                 print('[PDFPATH]', pdf_path)
                 if pdf_path:
                     with open(pdf_path, "rb") as f:
