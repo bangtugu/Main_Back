@@ -10,10 +10,6 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 EXTRACT_DIR = os.path.join(BASE_DIR, "extracted_texts")
 
 
-import requests
-import json
-import re
-
 def classify_file(text, file_type, categories):
     """
     텍스트 기반 문서 분류
@@ -35,7 +31,7 @@ def classify_file(text, file_type, categories):
             """
         end_prompt = (
             "지금까지 내용을 바탕으로 category 키만 포함한 JSON을 출력해. "
-            "다른 텍스트나 따옴표, 설명 금지."
+            "다른 텍스트나 따옴표, 설명 금지. 한글로."
         )
 
         payload = {
@@ -50,25 +46,35 @@ def classify_file(text, file_type, categories):
         response.raise_for_status()
 
         raw_text = response.json().get("response", "")
-        print(raw_text)
-        # 정규식으로 JSON 부분만 추출
-        match = re.search(r'\{"category"\s*:\s*".*?"\}', raw_text)
-        print(match.group())
-        print(json.loads(match.group()))
-        try:
-            classification_json = json.loads(match.group())
-        except:
-            classification_json = {"category": "기타"}
+        print("[DEBUG] raw_text:", raw_text)
 
-        if classification_json["category"] not in categories:
-            classification_json["category"] = "기타"
+        raw_text = raw_text.strip()
+        
+        match = re.search(r"```json\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
+        if match:
+            raw_text = match.group(1)
+        else:
+            raw_text = raw_text.strip()  # 백틱 없으면 그냥 strip
+
+        try:
+            data = json.loads(raw_text)
+            category = data.get("category")
+        except:
+            print('json load 실패')
+            return "error", {"category": None}
+        
+        # 허용 카테고리에 없으면 한글 여부 체크
+        if category not in categories:
+            if not category or not re.search(r"[가-힣]", category):
+                # 영어거나 비어있으면 에러 처리
+                return "error", {"category": category}
+            # 한글이면 완료 처리 (misclassified 가능)
+            return "done", None
 
     except Exception as e:
         return "error", {"category": f"error: {e}"}
 
-    return "done", classification_json["category"]
-
-
+    return "done", category
 
 def handle_files(files):
     """

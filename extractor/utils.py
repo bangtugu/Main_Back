@@ -52,6 +52,7 @@ def handle_files(files: list):
     for file_id, file_type in files:
         if file_type not in SUPPORTED_EXTENSIONS:
             print(f"[SKIP] Unsupported file: {file_id}.{file_type}")
+            db.unsupported_file_check(file_id)
             continue
         target_lst.append([file_id, file_type])
 

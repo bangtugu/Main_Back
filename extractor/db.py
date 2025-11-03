@@ -54,7 +54,6 @@ def start_extract_bulk(file_ids: list[int]):
     conn.close()
 
 
-
 def done_extract(file_id):
     """
     OCR 완료 후 IS_TRANSFORM 컬럼 업데이트
@@ -63,6 +62,18 @@ def done_extract(file_id):
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE FILES SET IS_TRANSFORM = 2 WHERE FILE_ID = :file_id",
+        {"file_id": file_id}
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def unsupported_file_check(file_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE FILES SET IS_TRANSFORM = 3 WHERE FILE_ID = :file_id",
         {"file_id": file_id}
     )
     conn.commit()

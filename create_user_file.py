@@ -115,7 +115,20 @@ def create_tables_and_sequences():
         conn.commit()
         print("[INFO] All tables and sequences created successfully.")
 
-        # ---------------- 샘플 데이터 삽입 ----------------
+    except Exception as e:
+        print(f"[ERROR] Failed to create tables/sequences: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def create_sample():
+    
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+            # ---------------- 샘플 데이터 삽입 ----------------
         cursor.execute("""
         INSERT INTO USERS (USER_ID, USER_LOGIN_ID, USER_PASSWORD, EMAIL)
         VALUES (USER_ID_SEQ.NEXTVAL, 'testuser', 'hashedpassword', 'test@example.com')
@@ -168,3 +181,4 @@ def create_tables_and_sequences():
 
 if __name__ == "__main__":
     create_tables_and_sequences()
+    # create_sample()

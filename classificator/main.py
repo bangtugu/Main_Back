@@ -32,8 +32,12 @@ async def new_file(request: dict, background_tasks: BackgroundTasks):
         ]
     }
     """
+    global check_set
     json_files = request.get("files", [])
     print(json_files)
+    for f in json_files:
+        check_set.add(f["FILE_ID"])
+    print('check', check_set)
     files = [(f["FILE_ID"], f["FILE_TYPE"]) for f in json_files]
 
     background_tasks.add_task(utils.handle_files, files)
