@@ -24,19 +24,6 @@ def convert_hwp_to_pdf(input_path, output_dir):
     - input_path: 변환할 HWP 파일 경로
     - output_dir: PDF 저장 폴더
     반환: 변환된 PDF 절대경로, 실패 시 None
-
-
-
-
-
-    접근 허용 메세지 뜨는거 레지스트리 작업으로 안뜨게 하기
-    https://developer.hancom.com/hwpautomation
-
-
-
-
-
-
     """
     pythoncom.CoInitialize()  # 반드시 호출
     hwp = None
@@ -46,9 +33,9 @@ def convert_hwp_to_pdf(input_path, output_dir):
         # COM 객체 생성
         hwp = win32com.client.gencache.EnsureDispatch("HWPFrame.HwpObject")
         
-        # 보안모듈 등록 (필수)
+        # 보안모듈 등록 (필수) https://developer.hancom.com/hwpautomation
         try:
-            hwp.RegisterModule('FilePathCheckDLL', 'AutomationModule')
+            hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModuleExample")
         except Exception:
             print("[WARN] 보안모듈 등록 실패, 이미 등록되어 있을 수 있음")
 
@@ -167,7 +154,7 @@ def handle_files(files: list):
             with open(txt_path, "w", encoding="utf-8") as out:
                 out.write(text)
 
-            db.done_extract(file_id)
+            db.done_extract(file_id, txt_path)
             result.append({"FILE_ID": file_id, "FILE_TYPE": file_type})
         except Exception as e:
             print('[ERROR]', e)

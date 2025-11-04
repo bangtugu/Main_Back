@@ -36,6 +36,10 @@ password = '비밀번호'
 python create_user_file.py
 ```
 
+```bash
+# https://developer.hancom.com/hwpautomation
+# hwp 보안모듈 관련 링크
+```
 
 ## extractor, classificator fastapi backend실행
 ``` bash
