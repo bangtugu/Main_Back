@@ -54,15 +54,20 @@ def start_extract_bulk(file_ids: list[int]):
     conn.close()
 
 
-def done_extract(file_id):
+def done_extract(file_id, txt_path):
     """
     OCR 완료 후 IS_TRANSFORM 컬럼 업데이트
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE FILES SET IS_TRANSFORM = 2 WHERE FILE_ID = :file_id",
-        {"file_id": file_id}
+        """
+        UPDATE FILES
+        SET IS_TRANSFORM = 2,
+            TRANSFORM_TXT_PATH = :transform_txt_path
+        WHERE FILE_ID = :file_id
+        """,
+        {"file_id": file_id, "transform_txt_path": txt_path}
     )
     conn.commit()
     cursor.close()
