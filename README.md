@@ -36,9 +36,22 @@ password = '비밀번호'
 python create_user_file.py
 ```
 
+## Libreoffice 설치 및 경로 설정
 ```bash
-# https://developer.hancom.com/hwpautomation
-# hwp 보안모듈 관련 링크
+# Libreoffice 설치
+# https://ko.libreoffice.org/download/libreoffice-stable/
+# extractor/utils.py 내부에 Libreoffice 설치 경로 설정
+# ex)
+LIBREOFFICE_PATH = "C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+```
+
+## hwp 보안 경고 알림 해제 레지스트리
+```bash
+# hwp 파일 처리의 경우 편집 가능한 한컴오피스가 설치되어 있어야 합니다.
+# hwp 보안모듈 관련 링크 : https://developer.hancom.com/hwpautomation
+# 보안모듈(Automation).zip 다운로드 및 압축해제 후, FilePathCheckerModuleExample.dll dll파일 경로 복사
+# 레지스트리 편집기 실행 후,
+# HKEY_CURRENT_USER\Software\HNC\HwpAutomation\Modules 경로에 FilePathCheckerModuleExample 문자열 레지스트리 생성, 값으로 복사해놓은 dll파일 경로 입력
 ```
 
 ## extractor, classificator fastapi backend실행
