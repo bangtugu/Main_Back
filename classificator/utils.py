@@ -18,63 +18,79 @@ def classify_file(text, file_type, categories):
     """
     if not categories:
         return "error", {"category": "categories is empty"}
+    categories = list(categories)
 
     try:
+        # ✅ 튜닝 데이터 형식과 동일한 인스트럭션 구조로 정리
+        instruction = (
+            f"다음 문서를 [{', '.join(categories)}] 카테고리 안에서 분류해줘."
+        )
+
         system_prompt = f"""
-            너는 문서 분류 AI야.
-            제공된 텍스트를 보고 반드시 아래 카테고리 중 하나만 선택해서 JSON 형태로 출력해.
-            가능한 카테고리: {categories}
-            반드시 목록 외의 값을 쓰지 말 것.
-            출력은 JSON만 허용하며, 다른 텍스트나 설명은 포함하지 마.
-            파일 원본 확장자: {file_type}
-            예시 출력: {{"category": "{categories[0]}"}} 
-            """
+            너는 문서 카테고리 분류를 수행하는 AI야.
+            입력으로 주어진 문서는 하나의 카테고리에만 속할 수 있어.
+            카테고리 목록은 다음과 같아:
+            {', '.join(categories)}
+
+            규칙:
+            1. 반드시 위 목록 중 하나만 고른다.
+            2. 출력은 반드시 JSON 형식으로 한다.
+            3. 설명, 따옴표, 추가 텍스트, 영어 번역 절대 포함하지 말 것.
+        """
+
         end_prompt = (
-            "지금까지 내용을 바탕으로 category 키만 포함한 JSON을 출력해. "
-            "다른 텍스트나 따옴표, 설명 금지. 한글로."
+            '''
+            지금까지의 내용을 바탕으로 category 키만 포함한 JSON을 출력해.
+            그 외의 설명, 문장, 코드블록, 따옴표 등은 절대 추가하지 마.
+            {
+            "category": "category"
+            }
+            무조건 이 형식에 맞춰서 반환해줘
+            '''
+        )
+
+        # ✅ 튜닝 구조에 맞춘 실제 프롬프트
+        full_prompt = (
+            f"{{\"instruction\": \"{instruction}\", \"input\": \"{text}\"}}\n\n"
+            f"{system_prompt}\n\n{end_prompt}"
         )
 
         payload = {
             "model": "gemma3:1b",
-            "prompt": f"{system_prompt}\n{text}\n{end_prompt}",
-            "max_tokens": 300,
-            "temperature": 0,   # 무작위 출력 줄이기
+            "prompt": full_prompt,
+            "max_tokens": 128,
+            "temperature": 0,
             "stream": False
         }
 
         response = requests.post(OLLAMA_API_URL, json=payload)
         response.raise_for_status()
-
-        raw_text = response.json().get("response", "")
+        raw_text = response.json().get("response", "").strip()
         print("[DEBUG] raw_text:", raw_text)
 
-        raw_text = raw_text.strip()
-        
+        # 코드블록 제거
         match = re.search(r"```json\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
         if match:
             raw_text = match.group(1)
-        else:
-            raw_text = raw_text.strip()  # 백틱 없으면 그냥 strip
+        raw_text = raw_text.strip()
 
+        # JSON 파싱
         try:
             data = json.loads(raw_text)
             category = data.get("category")
         except:
-            print('json load 실패')
-            return "error", {"category": None}
-        
-        # 허용 카테고리에 없으면 한글 여부 체크
+            print("[WARN] JSON 파싱 실패")
+            return "error", {"category": ""}
+
+        # 카테고리 검증
         if category not in categories:
-            if not category or not re.search(r"[가-힣]", category):
-                # 영어거나 비어있으면 에러 처리
-                return "error", {"category": category}
-            # 한글이면 완료 처리 (misclassified 가능)
-            return "done", None
+            return "error", {"category": category}
 
     except Exception as e:
         return "error", {"category": f"error: {e}"}
 
     return "done", category
+
 
 def handle_files(files):
     """

@@ -23,10 +23,9 @@ def create_tables_and_sequences():
         "DROP TABLE FILES",
         "DROP TABLE LOGS",
         "DROP TABLE USERS",
-        "DROP SEQUENCE SEQ_USER_ID",
-        "DROP SEQUENCE SEQ_FOLDER_ID",
-        "DROP SEQUENCE SEQ_FILE_ID",
-        "DROP SEQUENCE SEQ_LOG_ID"
+        "DROP SEQUENCE USER_ID_SEQ",
+        "DROP SEQUENCE FOLDER_ID_SEQ",
+        "DROP SEQUENCE LOG_ID_SEQ"
     ]
     for stmt in drop_statements:
         cursor.execute(f"BEGIN EXECUTE IMMEDIATE '{stmt}'; EXCEPTION WHEN OTHERS THEN NULL; END;")

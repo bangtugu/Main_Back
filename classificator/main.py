@@ -71,9 +71,7 @@ def dispatch_unclassified_files():
 # ==============================
 # APScheduler 설정
 # ==============================
-scheduler = BackgroundScheduler()
-scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=1)
-scheduler.start()
+scheduler = None
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -81,6 +79,9 @@ def shutdown_event():
 
 
 if __name__ == "__main__":
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(dispatch_unclassified_files, 'interval', minutes=5)
+    scheduler.start()
     print("[INFO] Starting Classificator API on port 8002...")
     uvicorn.run(
         "main:app",

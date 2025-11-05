@@ -69,7 +69,20 @@ def done_classification(file_id, result):
 
 
 def error_classification(file_id):
-    return
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE FILES
+        SET IS_CLASSIFICATION = 2,
+            CATEGORY = Null
+        WHERE FILE_ID = :fid
+        """,
+        {"fid": file_id}
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 
 def get_folder_ids_for_files(file_ids):

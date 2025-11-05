@@ -68,7 +68,7 @@ def dispatch_unextracted_files():
 # ==============================
 scheduler = BackgroundScheduler()
 # 5분마다 dispatch_unextracted_files 호출
-scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=1)
+scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=5)
 scheduler.start()
 
 # FastAPI 종료 시 스케줄러 종료
