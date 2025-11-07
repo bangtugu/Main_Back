@@ -63,14 +63,7 @@ def dispatch_unextracted_files():
         utils.handle_files(temp_lst)
 
 
-# ==============================
-# APScheduler 설정
-# ==============================
-scheduler = BackgroundScheduler()
-# 5분마다 dispatch_unextracted_files 호출
-scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=5)
-scheduler.start()
-
+scheduler = None
 # FastAPI 종료 시 스케줄러 종료
 @app.on_event("shutdown")
 def shutdown_event():
@@ -78,6 +71,10 @@ def shutdown_event():
 
 
 if __name__ == "__main__":
+    scheduler = BackgroundScheduler()
+    # 5분마다 dispatch_unextracted_files 호출
+    scheduler.add_job(dispatch_unextracted_files, 'interval', minutes=5)
+    scheduler.start()
     print("[INFO] Starting Extract Manager API on port 8001...")
     uvicorn.run(
         "main:app",

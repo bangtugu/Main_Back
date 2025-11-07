@@ -68,11 +68,8 @@ def dispatch_unclassified_files():
         utils.handle_files(temp_lst)
 
 
-# ==============================
-# APScheduler 설정
-# ==============================
 scheduler = None
-
+# FastAPI 종료 시 스케줄러 종료
 @app.on_event("shutdown")
 def shutdown_event():
     scheduler.shutdown()
