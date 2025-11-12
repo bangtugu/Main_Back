@@ -125,7 +125,7 @@ def handle_files(files):
         if not categories:
             print(f"[INFO] folder {folder_id}\'s categories is None.")
             for file_id, _ in files_in_folder:
-                db.done_classification(file_id, 'Null')
+                db.done_classification(file_id, None)
             continue
 
         for file_id, file_type in files_in_folder:
